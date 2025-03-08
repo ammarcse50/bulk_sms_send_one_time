@@ -1,0 +1,1 @@
+# bulk_sms_send_one_time initgit add README.mdgit commit -m first commitgit branch -M mastergit remote add origin git@github.com:ammarcse50/bulk_sms_send_one_time.gitgit push -u origin master

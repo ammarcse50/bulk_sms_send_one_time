@@ -1,0 +1,45 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider     = "mysql"
+  url          = env("DATABASE_URL")
+  relationMode = "prisma"
+}
+
+model sms_schedules {
+  id          BigInt    @id @default(autoincrement())
+  company_id  BigInt
+  route_id    Int
+  sms_sender  String    @db.VarChar(20)
+  sms_reciver String    @db.VarChar(20)
+  sms_text    String    @db.VarChar(2000)
+  schedule_at DateTime  @db.DateTime(0)
+  send_at     DateTime? @db.DateTime(0)
+  is_sms_sent Boolean   @default(false)
+  created_at  DateTime? @db.DateTime(0)
+  created_by  BigInt
+  updated_at  DateTime? @db.DateTime(0)
+  updated_by  BigInt?
+  is_active   Boolean   @default(false)
+}
+
+model sms_send_status {
+  id              BigInt    @id @default(autoincrement())
+  company_id      BigInt
+  route_id        Int
+  bulk_process_id String?   @db.VarChar(200)
+  sms_sender      String    @db.VarChar(20)
+  sms_reciver     String    @db.VarChar(20)
+  sms_text        String    @db.VarChar(2000)
+  schedule_at     DateTime  @db.DateTime(0)
+  send_at         DateTime? @db.DateTime(0)
+  response        String?   @db.Text
+  status          String    @db.VarChar(100)
+  created_at      DateTime? @db.DateTime(0)
+  created_by      BigInt
+  updated_at      DateTime? @db.DateTime(0)
+  updated_by      BigInt?
+  is_active       Boolean   @default(true)
+}
