@@ -6,13 +6,11 @@ export async function smsSchedule() {
     const startOfDay = new Date(currentDate);
     startOfDay.setHours(0, 0, 0, 0);
 
-    console.log(currentDate);
     const endOfDay = new Date(currentDate);
     endOfDay.setHours(23, 59, 59, 999);
 
     const transactedData = await prisma.$transaction(
       async (tx) => {
-        // Fetch the users data
         const usersData = await tx.sms_schedules.findMany({
           where: {
             is_sms_sent: false,
@@ -20,14 +18,18 @@ export async function smsSchedule() {
               lte: currentDate,
               gte: startOfDay,
             },
-            status: {
-              equals: "PENDING",
-            },
+            status: "PENDING",
           },
           take: 50,
+          orderBy: {
+            send_at: "asc",
+          },
         });
 
-        // Update the fetched data
+        if (usersData.length === 0) {
+          return [];
+        }
+
         const updatedData = await tx.sms_schedules.updateMany({
           where: {
             id: {
@@ -35,88 +37,88 @@ export async function smsSchedule() {
             },
           },
           data: {
-            is_sms_sent: true,
             status: "PROCESSING",
           },
         });
 
         return usersData;
       },
-      { isolationLevel: "ReadCommitted", timeout: 10000, maxWait: 5000 }
+      { isolationLevel: "Serializable", timeout: 1000, maxWait: 1000 }
     );
 
-    // Send SMS
-    const response = await fetch("http://localhost:3000/api/sms", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        routeId: process.env.SMS_ROUTE_ID,
-        messages: transactedData.slice(0, 10).map((user) => ({
-          from: user.sms_sender,
-          to: user.sms_reciver,
-          text: user.sms_text,
-        })),
-        refOrderNo: process.env.SMS_REF_ORDER_NO,
-        responseType: 1,
-      }),
-    });
+    for (let i = 0; i < transactedData.length; i += 10) {
+      const chunk = transactedData.slice(i, i + 10);
 
-    if (response.status === 200) {
-      // Create SMS send status for each user
-      for (const user of transactedData) {
-        await prisma.sms_send_status.create({
-          data: {
-            sms_reciver: user.sms_reciver,
-            sms_sender: user.sms_sender,
-            sms_text: user.sms_text,
-            status: "SENT",
-            created_by: user.id,
-            updated_by: user.id,
-            created_at: new Date(),
-            updated_at: new Date(),
-            company_id: user.company_id,
-            schedule_at: user.schedule_at,
-            route_id: user.route_id,
-            is_active: true,
-            send_at: new Date(),
-          },
-        });
-      }
-
-      // Update the SMS schedules
-      await prisma.sms_schedules.updateMany({
-        where: {
-          id: {
-            in: transactedData.map((user) => Number(user.id)),
-          },
+      const response = await fetch("http://localhost:3000/api/sms", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
-        data: {
-          is_sms_sent: true,
-        },
+        body: JSON.stringify({
+          routeId: process.env.SMS_ROUTE_ID,
+          messages: chunk.map((user) => ({
+            from: user.sms_sender,
+            to: user.sms_reciver,
+            text: user.sms_text,
+          })),
+          refOrderNo: process.env.SMS_REF_ORDER_NO,
+          responseType: 1,
+        }),
       });
-    } else {
-      // Handle failed SMS sends
-      for (const user of transactedData) {
-        await prisma.sms_send_status.create({
+
+      if (response.status === 200) {
+        for (const user of chunk) {
+          await prisma.sms_send_status.create({
+            data: {
+              sms_reciver: user.sms_reciver,
+              sms_sender: user.sms_sender,
+              sms_text: user.sms_text,
+              status: "SENT",
+              created_by: user.id,
+              updated_by: user.id,
+              created_at: new Date(),
+              updated_at: new Date(),
+              company_id: user.company_id,
+              schedule_at: user.schedule_at,
+              route_id: user.route_id,
+              is_active: true,
+              send_at: new Date(),
+            },
+          });
+        }
+
+        await prisma.sms_schedules.updateMany({
+          where: {
+            id: {
+              in: chunk.map((user) => Number(user.id)),
+            },
+          },
           data: {
-            sms_reciver: user.sms_reciver,
-            sms_sender: user.sms_sender,
-            sms_text: user.sms_text,
-            status: "FAILED",
-            created_by: user.id,
-            updated_by: user.id,
-            created_at: new Date(),
-            updated_at: new Date(),
-            company_id: user.company_id,
-            schedule_at: user.schedule_at,
-            route_id: user.route_id,
-            is_active: true,
-            response: "Receiver Absent",
-            send_at: new Date(),
+            is_sms_sent: true,
+            status: "SENT",
           },
         });
+      } else {
+        for (const user of chunk) {
+          await prisma.sms_send_status.create({
+            data: {
+              sms_reciver: user.sms_reciver,
+              sms_sender: user.sms_sender,
+              sms_text: user.sms_text,
+              status: "FAILED",
+              created_by: user.id,
+              updated_by: user.id,
+              created_at: new Date(),
+              updated_at: new Date(),
+              company_id: user.company_id,
+              schedule_at: user.schedule_at,
+              route_id: user.route_id,
+              is_active: true,
+              response: "Receiver Absent",
+              send_at: new Date(),
+            },
+          });
+        }
       }
     }
   } catch (error) {

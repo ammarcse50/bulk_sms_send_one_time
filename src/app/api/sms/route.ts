@@ -77,13 +77,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    messages.forEach((message) => {
-      if (message) {
-        console.log(
-          `I am from backend. Sending SMS from: ${message.from} to: ${message.to} with text: ${message.text}`
-        );
-      }
-    });
+    // messages.forEach((message) => {
+    //   // if (message) {
+    //   //   console.log(
+    //   //     `I am from backend. Sending SMS from: ${message.from} to: ${message.to} with text: ${message.text}`
+    //   //   );
+    //   }
+    // });
 
     return NextResponse.json({ status: 200 });
   } catch (error) {

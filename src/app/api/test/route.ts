@@ -1,7 +1,6 @@
 import { callSmsScheduleMultipleTimes } from "@/app/services/smsScheduler";
 
 export async function GET() {
-  callSmsScheduleMultipleTimes();
-
+ await Promise.all([callSmsScheduleMultipleTimes(), callSmsScheduleMultipleTimes()]);
   return Response.json({ status: 200 });
 }
