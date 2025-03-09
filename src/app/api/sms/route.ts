@@ -57,22 +57,42 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const { routeId, messages, refOrderNo, responseType } = await req.json();
+  try {
+    const { routeId, messages, refOrderNo, responseType } = await req.json();
 
-  if (!routeId || !messages || !refOrderNo || !responseType) {
+    if (!routeId || !messages || !refOrderNo || !responseType) {
+      return NextResponse.json(
+        {
+          error:
+            "Missing required parameters (routeId, messages, refOrderNo, responseType)",
+        },
+        { status: 400 }
+      );
+    }
+
+    if (!Array.isArray(messages)) {
+      return NextResponse.json(
+        { error: "Invalid messages format: messages must be an array" },
+        { status: 400 }
+      );
+    }
+
+    messages.forEach((message) => {
+      if (message) {
+        console.log(
+          `I am from backend. Sending SMS from: ${message.from} to: ${message.to} with text: ${message.text}`
+        );
+      }
+    });
+
+    return NextResponse.json({ status: 200 });
+  } catch (error) {
+    console.error("Error:", error);
     return NextResponse.json(
       {
-        error:
-          "Missing required parameters (routeId, messages, refOrderNo, responseType)",
+        error: error instanceof Error ? error.message : "Internal Server Error",
       },
-      { status: 400 }
+      { status: 500 }
     );
   }
-  messages[0].forEach((message) => {
-    console.log(
-      `iam from backend Sending SMS from: ${message.from} to: ${message.to} with text: ${message.text}`
-    );
-  });
-
-  return Response.json({ status: 200 }, {});
 }
