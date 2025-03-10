@@ -57,6 +57,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  console.log("POST request received");
   try {
     const { routeId, messages, refOrderNo, responseType } = await req.json();
 
